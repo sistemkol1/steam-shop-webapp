@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Steam Shop</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg-primary: #0f0f0f;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #242424;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent: #5b68f5;
+            --accent-hover: #4a56d9;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --error: #f44336;
+            --border: #333333;
+        }
+
+        body.light-theme {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --bg-tertiary: #e8e8e8;
+            --text-primary: #000000;
+            --text-secondary: #666666;
+            --border: #e0e0e0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        .app-container {
+            max-width: 600px;
+            margin: 0 auto;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .theme-toggle {
+            background: var(--bg-tertiary);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:active {
+            transform: scale(0.9);
+        }
+
+        /* Navigation */
+        .nav-tabs {
+            display: flex;
+            background: var(--bg-secondary);
+            padding: 0;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 57px;
+            z-index: 99;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 16px;
+            text-align: center;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            position: relative;
+            transition: color 0.3s ease;
+        }
+
+        .nav-tab.active {
+            color: var(--accent);
+        }
+
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--accent);
+        }
+
+        /* Content */
+        .content {
+            padding: 20px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: var(--bg-tertiary);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            position: relative;
+            height: 250px;
+            margin: 20px 0;
+        }
+
+        /* Categories */
+        .category-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .category-item:active {
+            transform: scale(0.98);
+            background: var(--accent);
+        }
+
+        .category-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .category-icon {
+            font-size: 28px;
+        }
+
+        .category-name {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .category-count {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .category-price {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        /* AI Chat */
+        .chat-container {
+            height: calc(100vh - 300px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            word-wrap: break-word;
+            animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            background: var(--accent);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.bot {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-input-container {
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            position: sticky;
+            bottom: 0;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .send-button {
+            width: 48px;
+            height: 48px;
+            background: var(--accent);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .send-button:active {
+            transform: scale(0.9);
+        }
+
+        .send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.7; }
+            30% { transform: translateY(-10px); opacity: 1; }
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 14px 24px;
+            border-radius: 12px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:active {
+            background: var(--accent-hover);
+            transform: scale(0.98);
+        }
+
+        /* Promocode Input */
+        .promo-input-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .promo-input {
+            flex: 1;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .promo-btn {
+            padding: 12px 24px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .promo-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Success/Error Messages */
+        .message-toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideDown 0.3s ease;
+            display: none;
+        }
+
+        .message-toast.show {
+            display: block;
+        }
+
+        .message-toast.success {
+            background: var(--success);
+            color: white;
+        }
+
+        .message-toast.error {
+            background: var(--error);
+            color: white;
+        }
+
+        @keyframes slideDown {
+            from { transform: translate(-50%, -20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-title">🎮 Steam Shop</div>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="themeIcon">🌙</span>
+            </button>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('dashboard')">📊 Дашборд</button>
+            <button class="nav-tab" onclick="switchTab('categories')">📂 Категории</button>
+            <button class="nav-tab" onclick="switchTab('support')">💬 Поддержка</button>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="card">
+                    <div class="card-title">📈 Статистика</div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="balanceValue">500</div>
+                            <div class="stat-label">Баланс (₽)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="purchasesValue">3</div>
+                            <div class="stat-label">Покупок</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="referralsValue">2</div>
+                            <div class="stat-label">Рефералов</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="levelValue">🥈</div>
+                            <div class="stat-label">Уровень</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📊 График продаж</div>
+                    <div class="chart-container">
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🎟️ Применить промокод</div>
+                    <div class="promo-input-group">
+                        <input type="text" class="promo-input" id="promoInput" placeholder="Введите промокод" />
+                        <button class="promo-btn" onclick="applyPromo()">✓</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categories Tab -->
+            <div id="categories" class="tab-content">
+                <div class="card">
+                    <div class="card-title">📂 Категории аккаунтов</div>
+                    <div class="category-list">
+                        <div class="category-item" onclick="selectCategory('basic')">
+                            <div class="category-info">
+                                <div class="category-icon">🥉</div>
+                                <div>
+                                    <div class="category-name">Базовый</div>
+                                    <div class="category-count">15 в наличии</div>
+                                </div>
+                            </div>
+                            <div class="category-price">100 ₽</div>
+                        </div>
+
+                        <div class="category-item" onclick="selectCategory('prime')">
+                            <div class="category-info">
+                                <div class="category-icon">🥈</div>
+                                <div>
+                                    <div class="category-name">Prime</div>
+                                    <div class="category-count">8 в наличии</div>
+                                </div>
+                            </div>
+                            <div class="category-price">150 ₽</div>
+                        </div>
+
+                        <div class="category-item" onclick="selectCategory('premium')">
+                            <div class="category-info">
+                                <div class="category-icon">🥇</div>
+                                <div>
+                                    <div class="category-name">Premium</div>
+                                    <div class="category-count">5 в наличии</div>
+                                </div>
+                            </div>
+                            <div class="category-price">250 ₽</div>
+                        </div>
+
+                        <div class="category-item" onclick="selectCategory('vip')">
+                            <div class="category-info">
+                                <div class="category-icon">💎</div>
+                                <div>
+                                    <div class="category-name">VIP</div>
+                                    <div class="category-count">2 в наличии</div>
+                                </div>
+                            </div>
+                            <div class="category-price">500 ₽</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Support Tab -->
+            <div id="support" class="tab-content">
+                <div class="card">
+                    <div class="card-title">🤖 AI Поддержка</div>
+                    <div class="chat-container">
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="message bot">
+                                Привет! 👋 Я AI-ассистент Steam Shop. Чем могу помочь?
+                            </div>
+                        </div>
+                        <div class="typing-indicator" id="typingIndicator">
+                            <div class="typing-dots">
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                                <div class="typing-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-container">
+                    <input 
+                        type="text" 
+                        class="chat-input" 
+                        id="chatInput" 
+                        placeholder="Напишите сообщение..."
+                        onkeypress="handleChatKeyPress(event)"
+                    />
+                    <button class="send-button" onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Messages -->
+    <div class="message-toast" id="toast"></div>
+
+    <script>
+        // Telegram WebApp API
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        // Theme Management
+        let isDarkTheme = true;
+
+        function toggleTheme() {
+            isDarkTheme = !isDarkTheme;
+            document.body.classList.toggle('light-theme');
+            document.getElementById('themeIcon').textContent = isDarkTheme ? '🌙' : '☀️';
+            
+            // Recreate chart with new theme
+            createChart();
+            
+            showToast('Тема изменена', 'success');
+        }
+
+        // Tab Switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active from all nav tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            // Vibrate on tab switch
+            tg.HapticFeedback.impactOccurred('light');
+        }
+
+        // Sales Chart
+        let salesChart;
+
+        function createChart() {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            
+            // Destroy existing chart
+            if (salesChart) {
+                salesChart.destroy();
+            }
+
+            const textColor = getComputedStyle(document.documentElement)
+                .getPropertyValue('--text-primary').trim();
+            const borderColor = getComputedStyle(document.documentElement)
+                .getPropertyValue('--border').trim();
+            const accentColor = getComputedStyle(document.documentElement)
+                .getPropertyValue('--accent').trim();
+
+            salesChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                    datasets: [{
+                        label: 'Продажи',
+                        data: [12, 19, 15, 25, 22, 30, 28],
+                        borderColor: accentColor,
+                        backgroundColor: accentColor + '20',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: borderColor
+                            },
+                            ticks: {
+                                color: textColor
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: textColor
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Promocode
+        function applyPromo() {
+            const promoCode = document.getElementById('promoInput').value.trim();
+            
+            if (!promoCode) {
+                showToast('Введите промокод', 'error');
+                return;
+            }
+
+            // Simulate API call
+            tg.HapticFeedback.notificationOccurred('success');
+            showToast('Промокод применён! Скидка 20%', 'success');
+            document.getElementById('promoInput').value = '';
+
+            // Send to bot
+            tg.sendData(JSON.stringify({
+                action: 'apply_promo',
+                code: promoCode
+            }));
+        }
+
+        // Category Selection
+        function selectCategory(category) {
+            tg.HapticFeedback.impactOccurred('medium');
+            
+            const categories = {
+                'basic': { name: 'Базовый', price: 100, emoji: '🥉' },
+                'prime': { name: 'Prime', price: 150, emoji: '🥈' },
+                'premium': { name: 'Premium', price: 250, emoji: '🥇' },
+                'vip': { name: 'VIP', price: 500, emoji: '💎' }
+            };
+
+            const selected = categories[category];
+            
+            tg.MainButton.setText(`Купить ${selected.emoji} ${selected.name} за ${selected.price}₽`);
+            tg.MainButton.show();
+            tg.MainButton.onClick(() => {
+                tg.sendData(JSON.stringify({
+                    action: 'buy_account',
+                    category: category,
+                    price: selected.price
+                }));
+            });
+
+            showToast(`Выбрана категория: ${selected.emoji} ${selected.name}`, 'success');
+        }
+
+        // AI Chat
+        const aiResponses = {
+            'привет': 'Привет! 👋 Чем могу помочь?',
+            'помощь': 'Я могу помочь вам с:\n• Выбором аккаунта\n• Применением промокода\n• Пополнением баланса\n• Ответами на вопросы',
+            'цена': 'У нас есть 4 категории:\n🥉 Базовый - 100₽\n🥈 Prime - 150₽\n🥇 Premium - 250₽\n💎 VIP - 500₽',
+            'промокод': 'Чтобы применить промокод, перейдите во вкладку "Дашборд" и введите код в специальном поле.',
+            'покупка': 'Для покупки аккаунта:\n1. Перейдите в "Категории"\n2. Выберите нужную категорию\n3. Нажмите кнопку "Купить"',
+            'баланс': 'Ваш текущий баланс: 500₽\nДля пополнения обратитесь к администратору.',
+            'default': 'Я не совсем понял ваш вопрос. Попробуйте спросить о цене, промокодах или покупке аккаунтов.'
+        };
+
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // Add user message
+            addMessage(message, 'user');
+            input.value = '';
+
+            // Show typing indicator
+            document.getElementById('typingIndicator').classList.add('active');
+
+            // Simulate AI response
+            setTimeout(() => {
+                document.getElementById('typingIndicator').classList.remove('active');
+                
+                // Find matching response
+                let response = aiResponses.default;
+                for (let key in aiResponses) {
+                    if (message.toLowerCase().includes(key)) {
+                        response = aiResponses[key];
+                        break;
+                    }
+                }
+
+                addMessage(response, 'bot');
+                tg.HapticFeedback.impactOccurred('light');
+            }, 1000 + Math.random() * 1000);
+        }
+
+        function addMessage(text, sender) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            messageDiv.textContent = text;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function handleChatKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Toast Notifications
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `message-toast ${type} show`;
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            createChart();
+            
+            // Simulate loading user data
+            setTimeout(() => {
+                tg.HapticFeedback.notificationOccurred('success');
+            }, 500);
+        });
+
+        // Handle theme color
+        tg.setHeaderColor(isDarkTheme ? '#1a1a1a' : '#ffffff');
+        tg.setBackgroundColor(isDarkTheme ? '#0f0f0f' : '#ffffff');
+    </script>
+</body>
+</html>
